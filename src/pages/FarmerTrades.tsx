@@ -1,83 +1,176 @@
-import { useTradeHistoryData } from "@/hooks/useGoogleSheets";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { useState } from "react";
+
+// Sample trade data
+const tradeData = [
+  {
+    date: "2024-01-25",
+    tradeId: "TRD-001",
+    farmerUid: "F-001",
+    retailerUid: "R-001",
+    amount: 1500,
+    status: "Completed"
+  },
+  {
+    date: "2024-01-24",
+    tradeId: "TRD-002",
+    farmerUid: "F-001",
+    retailerUid: "R-002",
+    amount: 2300,
+    status: "Pending"
+  },
+  {
+    date: "2024-01-23",
+    tradeId: "TRD-003",
+    farmerUid: "F-001",
+    retailerUid: "R-003",
+    amount: 1800,
+    status: "Completed"
+  },
+  {
+    date: "2024-01-22",
+    tradeId: "TRD-004",
+    farmerUid: "F-001",
+    retailerUid: "R-001",
+    amount: 3200,
+    status: "Failed"
+  },
+  {
+    date: "2024-01-21",
+    tradeId: "TRD-005",
+    farmerUid: "F-001",
+    retailerUid: "R-004",
+    amount: 2700,
+    status: "Completed"
+  }
+];
+
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'completed':
+      return 'bg-success/20 text-success';
+    case 'pending':
+      return 'bg-warning/20 text-warning';
+    case 'failed':
+      return 'bg-destructive/20 text-destructive';
+    default:
+      return 'bg-muted text-muted-foreground';
+  }
+};
 
 const FarmerTrades = () => {
-  const { data: trades, isLoading } = useTradeHistoryData();
-
-  // Filter trades for farmers only
-  const farmerTrades = trades?.filter((trade) => trade.seller_type === 'farmer') || [];
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-[200px]" />
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </div>
-    );
-  }
+  const [view, setView] = useState<'daily' | 'monthly'>('daily');
+  const [date, setDate] = useState<Date>();
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-3xl font-bold text-primary">Trade History</h1>
-        <div className="space-x-2">
-          <Button variant="outline">Daily</Button>
-          <Button variant="outline">Monthly</Button>
+        
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant={view === 'daily' ? 'default' : 'outline'}
+              onClick={() => setView('daily')}
+            >
+              Daily
+            </Button>
+            <Button 
+              variant={view === 'monthly' ? 'default' : 'outline'}
+              onClick={() => setView('monthly')}
+            >
+              Monthly
+            </Button>
+          </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-[240px] justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, "PPP") : "Pick a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Select defaultValue="all">
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
-
-      <div className="border rounded-lg">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Trade ID</TableHead>
-              <TableHead>Buyer</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Amount (BDT)</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {farmerTrades.map((trade) => (
-              <TableRow key={trade.trade_id}>
-                <TableCell>
-                  {format(new Date(trade.date), 'MMM dd, yyyy')}
-                </TableCell>
-                <TableCell>{trade.trade_id}</TableCell>
-                <TableCell>{trade.buyer_name}</TableCell>
-                <TableCell>{trade.product_name}</TableCell>
-                <TableCell>{trade.quantity} {trade.unit}</TableCell>
-                <TableCell>{trade.amount} BDT</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-sm ${
-                    trade.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    trade.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {trade.status}
-                  </span>
-                </TableCell>
+      
+      <Card className="p-6">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Trade ID</TableHead>
+                <TableHead>Farmer UID</TableHead>
+                <TableHead>Retailer UID</TableHead>
+                <TableHead className="text-right">Amount (BDT)</TableHead>
+                <TableHead className="text-center">Status</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {tradeData.map((trade) => (
+                <TableRow key={trade.tradeId}>
+                  <TableCell>{format(new Date(trade.date), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell className="font-medium">{trade.tradeId}</TableCell>
+                  <TableCell>{trade.farmerUid}</TableCell>
+                  <TableCell>{trade.retailerUid}</TableCell>
+                  <TableCell className="text-right">{trade.amount.toLocaleString()} ৳</TableCell>
+                  <TableCell className="text-center">
+                    <Badge className={getStatusColor(trade.status)}>
+                      {trade.status}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 };

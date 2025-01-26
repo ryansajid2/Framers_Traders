@@ -1,180 +1,117 @@
-import { useInventoryData, useProductData } from "@/hooks/useGoogleSheets";
+import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState } from "react";
+import { Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-export default function RetailerInventory() {
-  const { data: inventory, isLoading: isLoadingInventory } = useInventoryData();
-  const { data: products, isLoading: isLoadingProducts } = useProductData();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-
-  // Filter inventory for retailers only
-  const retailerInventory = inventory?.filter((item) => item.owner_type === 'retailer') || [];
-  
-  // Get all unique categories from products
-  const categories = [...new Set(products?.map(product => product.category) || [])];
-
-  // Filter inventory based on search and category
-  const filteredInventory = retailerInventory.filter(item => {
-    const matchesSearch = item.product_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  if (isLoadingInventory || isLoadingProducts) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-[200px]" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Skeleton className="h-[200px]" />
-          <Skeleton className="h-[200px]" />
-          <Skeleton className="h-[200px]" />
-        </div>
-      </div>
-    );
+// Sample data - replace with actual data from your backend
+const inventoryData = [
+  {
+    id: "PRD001",
+    name: "Fresh Tomatoes",
+    category: "Vegetables",
+    quantity: 150,
+    listPrice: 6.99,
+    costPrice: 4.99,
+    status: "In Stock"
+  },
+  {
+    id: "PRD002",
+    name: "Organic Potatoes",
+    category: "Root Vegetables",
+    quantity: 100,
+    listPrice: 5.99,
+    costPrice: 3.99,
+    status: "Low Stock"
+  },
+  {
+    id: "PRD003",
+    name: "Green Lettuce",
+    category: "Leafy Greens",
+    quantity: 50,
+    listPrice: 4.99,
+    costPrice: 2.99,
+    status: "Critical"
+  },
+  {
+    id: "PRD004",
+    name: "Fresh Carrots",
+    category: "Root Vegetables",
+    quantity: 200,
+    listPrice: 4.99,
+    costPrice: 3.49,
+    status: "In Stock"
+  },
+  {
+    id: "PRD005",
+    name: "Sweet Corn",
+    category: "Grains",
+    quantity: 125,
+    listPrice: 7.99,
+    costPrice: 5.99,
+    status: "In Stock"
   }
+];
 
-  // Calculate inventory statistics
-  const totalItems = filteredInventory.length;
-  const totalValue = filteredInventory.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.price_per_unit)), 0);
-  const lowStock = filteredInventory.filter(item => Number(item.quantity) < Number(item.min_stock_level)).length;
+const getStatusColor = (status: string) => {
+  switch (status.toLowerCase()) {
+    case 'in stock':
+      return 'bg-success/20 text-success';
+    case 'low stock':
+      return 'bg-warning/20 text-warning';
+    case 'critical':
+      return 'bg-destructive/20 text-destructive';
+    default:
+      return 'bg-muted text-muted-foreground';
+  }
+};
 
+const RetailerInventory = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-primary">Inventory Management</h1>
-        <Button>Add New Item</Button>
+        <h1 className="text-3xl font-bold text-primary">Retailer Inventory Management</h1>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" /> Add Product
+        </Button>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Items</CardTitle>
-            <CardDescription>Number of unique products</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totalItems}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Value</CardTitle>
-            <CardDescription>Current inventory value</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totalValue.toLocaleString()} BDT</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Low Stock Items</CardTitle>
-            <CardDescription>Items below minimum level</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{lowStock}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventory Items</CardTitle>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Input 
-                placeholder="Search items..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select 
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredInventory.map((item) => {
-              // Find corresponding product for additional details
-              const product = products?.find(p => p.name === item.product_name);
-              
-              return (
-                <Card key={item.id}>
-                  <CardHeader>
-                    <CardTitle>{item.product_name}</CardTitle>
-                    <CardDescription>{item.category}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      {product?.description && (
-                        <div className="text-sm text-muted-foreground mb-4">
-                          {product.description}
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Quantity:</span>
-                        <span className="font-medium">{item.quantity} {item.unit}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Price per unit:</span>
-                        <span className="font-medium">{item.price_per_unit} BDT</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Total Value:</span>
-                        <span className="font-medium">
-                          {(Number(item.quantity) * Number(item.price_per_unit)).toLocaleString()} BDT
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status:</span>
-                        <span className={`px-2 py-1 rounded-full text-sm ${
-                          Number(item.quantity) > Number(item.min_stock_level)
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {Number(item.quantity) > Number(item.min_stock_level) ? 'In Stock' : 'Low Stock'}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </CardContent>
+      
+      <Card className="p-6">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">Product ID</TableHead>
+                <TableHead>Product Name</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead className="text-right">List Price</TableHead>
+                <TableHead className="text-right">Cost Price</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {inventoryData.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.id}</TableCell>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>{item.category}</TableCell>
+                  <TableCell className="text-right">{item.quantity} kg</TableCell>
+                  <TableCell className="text-right">${item.listPrice.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">${item.costPrice.toFixed(2)}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge className={`${getStatusColor(item.status)}`}>
+                      {item.status}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );
-}
+};
+
+export default RetailerInventory;
