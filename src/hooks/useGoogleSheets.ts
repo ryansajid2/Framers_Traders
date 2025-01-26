@@ -17,14 +17,14 @@ export const useProductData = () => {
 
 export const useTradeHistoryData = () => {
   return useQuery({
-    queryKey: ['tradeHistory'],
+    queryKey: ['trade-history'],
     queryFn: () => googleSheetsService.getTradeHistoryData(),
   });
 };
 
 export const useProfileData = () => {
   return useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profiles'],
     queryFn: () => googleSheetsService.getProfileData(),
   });
 };
