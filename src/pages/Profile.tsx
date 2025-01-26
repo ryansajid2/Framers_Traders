@@ -1,7 +1,10 @@
-import { Card } from "@/components/ui/card";
+import { useProfileData } from "@/hooks/useGoogleSheets";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useLocation } from "react-router-dom";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -62,7 +65,10 @@ const subDistricts = {
   // Add more sub-districts as needed
 };
 
-const Profile = () => {
+export default function Profile() {
+  const location = useLocation();
+  const { data: profileData, isLoading } = useProfileData();
+  const isFarmer = location.pathname.startsWith('/farmer');
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [formData, setFormData] = useState<Partial<Profile>>({});
@@ -185,8 +191,22 @@ const Profile = () => {
     }
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
+  // Find the current user's profile based on role
+  const userProfile = profileData?.find(
+    (profile) => profile.role.toLowerCase() === (isFarmer ? 'farmer' : 'retailer')
+  );
+
+  if (isLoading || loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-[200px]" />
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -378,6 +398,4 @@ const Profile = () => {
       </div>
     </div>
   );
-};
-
-export default Profile;
+}
