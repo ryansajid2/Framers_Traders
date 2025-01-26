@@ -3,17 +3,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, User, Settings, LogOut, SwitchCamera } from "lucide-react";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
-import { Database } from "@/integrations/supabase/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -24,6 +26,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Camera, User, Settings, LogOut, SwitchCamera } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { Database } from "@/integrations/supabase/types";
 
 type Profile = Database['public']['Tables']['profiles']['Row'] & {
   division?: string;
@@ -32,14 +39,25 @@ type Profile = Database['public']['Tables']['profiles']['Row'] & {
 };
 
 // Sample location data
-const divisions = ["Dhaka", "Chittagong", "Rajshahi", "Khulna", "Barisal", "Sylhet", "Rangpur", "Mymensingh"];
+const divisions = [
+  "Dhaka",
+  "Chittagong",
+  "Rajshahi",
+  "Khulna",
+  "Barisal",
+  "Sylhet",
+  "Rangpur",
+  "Mymensingh"
+];
+
 const districts = {
   "Dhaka": ["Dhaka", "Gazipur", "Narayanganj"],
   "Chittagong": ["Chittagong", "Cox's Bazar", "Comilla"],
   // Add more districts as needed
 };
+
 const subDistricts = {
-  "Dhaka": ["Mirpur", "Mohammadpur", "Gulshan", "Dhanmondi"],
+  "Dhaka": ["Mirpur", "Uttara", "Gulshan", "Dhanmondi"],
   "Gazipur": ["Gazipur Sadar", "Kapasia", "Sreepur"],
   // Add more sub-districts as needed
 };
@@ -49,8 +67,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [formData, setFormData] = useState<Partial<Profile>>({});
   const [loading, setLoading] = useState(true);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     getProfile();
@@ -70,7 +87,6 @@ const Profile = () => {
       if (error) throw error;
       setProfile(data);
       setFormData(data);
-      setImageUrl(data.avatar_url);
     } catch (error) {
       console.error('Error loading profile:', error);
       toast({
@@ -85,100 +101,6 @@ const Profile = () => {
 
   const handleInputChange = (key: keyof Profile, value: string) => {
     setFormData(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      setUploading(true);
-      
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('You must select an image to upload.');
-      }
-
-      const file = event.target.files[0];
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      
-      // Validate file size
-      if (file.size > maxSize) {
-        throw new Error('File size must be less than 5MB');
-      }
-
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        throw new Error('File must be an image');
-      }
-
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
-
-      // Create a unique file name
-      const fileExt = file.name.split('.').pop()?.toLowerCase();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-
-      // First, try to delete the old avatar if it exists
-      if (profile?.avatar_url) {
-        try {
-          const oldFileName = profile.avatar_url.split('/').pop();
-          if (oldFileName) {
-            await supabase.storage
-              .from('avatars')
-              .remove([oldFileName]);
-          }
-        } catch (error) {
-          console.error('Error deleting old avatar:', error);
-        }
-      }
-
-      // Upload the new file
-      const { error: uploadError, data } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      if (!data) {
-        throw new Error('Upload failed');
-      }
-
-      // Get the public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      // Update the profile with the new avatar URL
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user.id);
-
-      if (updateError) {
-        throw updateError;
-      }
-
-      setImageUrl(publicUrl);
-      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
-
-      toast({
-        title: "Success",
-        description: "Profile picture updated successfully",
-      });
-
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      toast({
-        title: "Error uploading image",
-        description: error instanceof Error ? error.message : "Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setUploading(false);
-    }
   };
 
   const handleSubmit = async () => {
@@ -208,11 +130,55 @@ const Profile = () => {
     }
   };
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('You must select an image to upload.');
+      }
+
+      setIsUploading(true);
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${profile?.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      handleInputChange('avatar_url', publicUrl);
+      await handleSubmit();
+
       toast({
-        title: "Error signing out",
+        title: "Profile picture updated",
+        description: "Your profile picture has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Error uploading image",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      // Handle logout success (redirect, etc.)
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Error logging out",
         description: "Please try again later.",
         variant: "destructive",
       });
@@ -234,13 +200,14 @@ const Profile = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => {}}>
+              <SwitchCamera className="mr-2 h-4 w-4" />
+              Switch Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Logout</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <SwitchCamera className="mr-2 h-4 w-4" />
-              <span>Switch Profile</span>
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -251,7 +218,7 @@ const Profile = () => {
           <div className="flex flex-col items-center space-y-4">
             <div className="relative">
               <Avatar className="h-32 w-32">
-                <AvatarImage src={imageUrl || ''} />
+                <AvatarImage src={formData?.avatar_url || ''} />
                 <AvatarFallback><User className="w-12 h-12" /></AvatarFallback>
               </Avatar>
               <Dialog>
@@ -264,7 +231,7 @@ const Profile = () => {
                   <DialogHeader>
                     <DialogTitle>Update Profile Picture</DialogTitle>
                     <DialogDescription>
-                      Choose a new profile picture to upload
+                      Choose a new profile picture to upload. The image should be square and less than 2MB.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
@@ -272,15 +239,18 @@ const Profile = () => {
                       type="file"
                       accept="image/*"
                       onChange={handleImageUpload}
-                      disabled={uploading}
+                      disabled={isUploading}
                     />
-                    {uploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
+                    {isUploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
                   </div>
                 </DialogContent>
               </Dialog>
             </div>
-            <h2 className="text-xl font-semibold">{profile?.full_name || 'Anonymous'}</h2>
-            <p className="text-sm text-muted-foreground capitalize">{profile?.role}</p>
+            <h2 className="text-xl font-semibold">{formData?.full_name || 'Anonymous'}</h2>
+            <div className="flex flex-col items-center gap-1">
+              <p className="text-sm text-muted-foreground capitalize">{formData?.role}</p>
+              <p className="text-sm font-medium">UID: {formData?.id}</p>
+            </div>
           </div>
         </Card>
         
@@ -325,7 +295,7 @@ const Profile = () => {
             </div>
 
             <div className="space-y-4">
-              <h3 className="font-medium">Location Settings</h3>
+              <h3 className="text-lg font-semibold">Location Settings</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Division</Label>
